@@ -1,6 +1,31 @@
 version: '2'
-
+#https://www.digitalocean.com/community/tutorials/how-to-secure-a-containerized-node-js-application-with-nginx-let-s-encrypt-and-docker-compose
 services:
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ${PWD}/nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - 80:80
+      - 443:443
+      - 5044:5044
+    networks: 
+      - elk
+    depends_on:
+      - kibana
+      - logstash1
+      - logstash2
+
+  certbot:
+    image: certbot/certbot
+    container_name: certbot
+    volumes:
+      - ${PWD}/certbot-etc:/etc/letsencrypt
+      - ${PWD}/certbot-var:/var/lib/letsencrypt
+      - ${PWD}/web-root:/var/www/html
+    depends_on:
+      - nginx
+    command: certonly --webroot --webroot-path=/var/www/html --email sammy@example.com --agree-tos --no-eff-email --staging -d example.com  -d www.example.com 
 
   elasticsearch:
     build:
@@ -9,15 +34,12 @@ services:
         ELK_VERSION: $ELK_VERSION
     volumes:
       - ${PWD}/elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-    ports:
-      - "9200:9200"
-      - "9300:9300"
     environment:
       ES_JAVA_OPTS: "-Xmx256m -Xms256m"
     networks:
       - elk
 
-  logstash:
+  logstash1:
     build:
       context: logstash/
       args:
@@ -25,9 +47,21 @@ services:
     volumes:
       - ${PWD}/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - ${PWD}/logstash/pipeline:/usr/share/logstash/pipeline:ro
-    ports:
-      - "5044:5044"
-      - "9600:9600"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk
+    depends_on:
+      - elasticsearch
+
+  logstash1:
+    build:
+      context: logstash/
+      args:
+        ELK_VERSION: $ELK_VERSION
+    volumes:
+      - ${PWD}/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ${PWD}/logstash/pipeline:/usr/share/logstash/pipeline:ro
     environment:
       LS_JAVA_OPTS: "-Xmx256m -Xms256m"
     networks:
@@ -42,14 +76,11 @@ services:
         ELK_VERSION: $ELK_VERSION
     volumes:
       - ${PWD}/kibana/config/:/usr/share/kibana/config:ro
-    ports:
-      - "5601:5601"
     networks:
       - elk
     depends_on:
       - elasticsearch
 
 networks:
-
   elk:
     driver: bridge
