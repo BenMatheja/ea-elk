@@ -40,6 +40,7 @@ services:
       - elk
 
   logstash1:
+    container_name: logstash1
     build:
       context: logstash/
       args:
@@ -54,7 +55,8 @@ services:
     depends_on:
       - elasticsearch
 
-  logstash1:
+  logstash2:
+    container_name: logstash2
     build:
       context: logstash/
       args:
