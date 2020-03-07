@@ -46,8 +46,9 @@ services:
       context: kibana/
       args:
         ELK_VERSION: $ELK_VERSION
-    volumes:
-      - ${PWD}/kibana/config/:/usr/share/kibana/config:ro
+    environment:
+       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      
     depends_on:
       - elasticsearch
 
